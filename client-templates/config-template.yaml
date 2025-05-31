@@ -1,0 +1,9 @@
+# Client configuration template (non-sensitive data only)
+
+tenant_client_id: CORE.DEV                           # Unique identifier for the client (used for tenant separation)
+core_api_host: http://localhost                      # Hostname or IP where core-services backend is running
+services_port: 3000                                  # Port number where backend services are exposed
+auth_url: /auth/login                                # Relative URL for authentication endpoint
+backend_url: api.core.com                            # Base URL for the backend API (used for client communication)
+api_url: http://localhost:3000/api                   # Full URL for core-services API access
+token_endpoint: https://login.microsoftonline.com    # Azure OAuth2 token endpoint

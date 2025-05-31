@@ -3,75 +3,47 @@
   "title": "Core Services Config",
   "type": "object",
   "required": [
-    "sender_email",
-    "client_id",
-    "client_secret",
-    "tenant_id",
-    "refresh_token",
     "tenant_client_id",
-    "jwt_secret",
-    "internal_jwt_secret",
-    "auth_username",
-    "auth_password",
+    "core_api_host",
+    "services_port",
     "auth_url",
+    "backend_url",
     "api_url",
     "token_endpoint"
   ],
   "properties": {
-    "sender_email": {
-      "type": "string",
-      "format": "email"
-    },
-    "client_id": {
-      "type": "string"
-    },
-    "client_secret": {
-      "type": "string"
-    },
-    "tenant_id": {
-      "type": "string"
-    },
-    "refresh_token": {
-      "type": "string"
-    },
     "tenant_client_id": {
-      "type": "string"
-    },
-    "jwt_secret": {
-      "type": "string"
-    },
-    "internal_jwt_secret": {
-      "type": "string"
-    },
-    "auth_username": {
-      "type": "string"
-    },
-    "auth_password": {
-      "type": "string"
+      "type": "string",
+      "description": "Unique identifier for the client, e.g., CORE.DEV"
     },
     "core_api_host": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "Base host URL for the core API (e.g. http://localhost)"
     },
     "services_port": {
       "type": "number",
-      "format": "uri"
+      "description": "Port used to expose backend services (e.g. 3000)"
     },
     "auth_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "Authentication route relative to base host (e.g. /auth/login)"
     },
     "backend_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "Base URL of the backend API exposed to clients (e.g. api.core.com)"
     },
     "api_url": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "Full API URL used internally to call backend endpoints (e.g. http://localhost:3000/api)"
     },
     "token_endpoint": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "OAuth2 token endpoint (e.g. https://login.microsoftonline.com)"
     }
   },
   "additionalProperties": false

@@ -1,19 +1,23 @@
 {
-    "yaml.schemas": {
-      "./schemas/metadata.schema.json": [
-        "core/metadata.yaml",
-        "tools/metadata-template.yaml",
-        "client-template/metadata.yaml",
-        "client*/metadata.yaml"
-      ],
-      "./schemas/config.schema.json": [
-        "core/config.yaml",
-        "client-template/config.yaml",
-        "client*/config.yaml"
-      ]
-    },
-    "yaml.customTags": [],
-    "yaml.validate": true,
-    "yaml.format.enable": true
-  }
-  
+  "yaml.schemas": {
+    "./schemas/metadata.schema.json": [
+      "core-dev/metadata.yaml",
+      "client-template/metadata.yaml",
+      "client*/metadata.yaml",
+      "tools/metadata-template.yaml"
+    ],
+    "./schemas/config.schema.json": [
+      "core-dev/config.yaml",
+      "client-template/config.yaml",
+      "client*/config.yaml"
+    ],
+    "./schemas/secrets.schema.json": [
+      "core-dev/secrets.sops.yaml",
+      "client-template/secrets.sops.yaml",
+      "client*/secrets.sops.yaml"
+    ]
+  },
+  "yaml.customTags": [],
+  "yaml.validate": true,
+  "yaml.format.enable": true
+}

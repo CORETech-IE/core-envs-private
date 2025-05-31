@@ -53,3 +53,10 @@ debug.log
 # Tools backup protection
 tools/private-key.asc
 tools/*.gpg
+
+# Local binaries
+tools/win64/
+# Do not track example templates after copy
+client*/config.yaml
+client*/secrets.sops.yaml
+client*/metadata.yaml
