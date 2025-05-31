@@ -1,0 +1,16 @@
+sender_email: sender@example.com
+client_id: your-client-id
+client_secret: your-client-secret
+tenant_id: your-tenant-id
+refresh_token: your-refresh-token
+tenant_client_id: client-app-id-for-auth
+jwt_secret: your-jwt-secret
+internal_jwt_secret: your-internal-jwt-secret
+auth_username: admin
+auth_password: password123
+core_api_host: http://localhost
+services_port: 3000
+auth_url: http://localhost:3000/auth/login
+backend_url: api.core.com
+api_url: http://localhost:3000/api
+token_endpoint: https://login.microsoftonline.com

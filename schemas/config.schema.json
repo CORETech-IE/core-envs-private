@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Core Services Config",
+  "type": "object",
+  "required": [
+    "sender_email",
+    "client_id",
+    "client_secret",
+    "tenant_id",
+    "refresh_token",
+    "tenant_client_id",
+    "jwt_secret",
+    "internal_jwt_secret",
+    "auth_username",
+    "auth_password",
+    "auth_url",
+    "api_url",
+    "token_endpoint"
+  ],
+  "properties": {
+    "sender_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "client_secret": {
+      "type": "string"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "refresh_token": {
+      "type": "string"
+    },
+    "tenant_client_id": {
+      "type": "string"
+    },
+    "jwt_secret": {
+      "type": "string"
+    },
+    "internal_jwt_secret": {
+      "type": "string"
+    },
+    "auth_username": {
+      "type": "string"
+    },
+    "auth_password": {
+      "type": "string"
+    },
+    "core_api_host": {
+      "type": "string",
+      "format": "uri"
+    },
+    "services_port": {
+      "type": "number",
+      "format": "uri"
+    },
+    "auth_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "backend_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "api_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "token_endpoint": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "additionalProperties": false
+}
