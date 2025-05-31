@@ -56,7 +56,10 @@ tools/*.gpg
 
 # Local binaries
 tools/win64/
-# Do not track example templates after copy
-client*/config.yaml
-client*/secrets.sops.yaml
-client*/metadata.yaml
+
+# Clients configuration files
+clients/*/config.yaml
+clients/*/metadata.yaml
+
+# ⚠️ allow encrypted secrets (should be committed)
+!clients/*/secrets.sops.yaml

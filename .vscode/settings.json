@@ -1,20 +1,17 @@
 {
   "yaml.schemas": {
     "./schemas/metadata.schema.json": [
-      "core-dev/metadata.yaml",
+      "clients/*/metadata.yaml",
       "client-template/metadata.yaml",
-      "client*/metadata.yaml",
       "tools/metadata-template.yaml"
     ],
     "./schemas/config.schema.json": [
-      "core-dev/config.yaml",
-      "client-template/config.yaml",
-      "client*/config.yaml"
+      "clients/*/config.yaml",
+      "client-template/config.yaml"
     ],
     "./schemas/secrets.schema.json": [
-      "core-dev/secrets.sops.yaml",
-      "client-template/secrets.sops.yaml",
-      "client*/secrets.sops.yaml"
+      "clients/*/secrets.sops.yaml",
+      "client-template/secrets.sops.yaml"
     ]
   },
   "yaml.customTags": [],

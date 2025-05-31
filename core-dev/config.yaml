@@ -1,7 +1,0 @@
-tenant_client_id: CORE.DEV
-core_api_host: http://localhost
-services_port: 3000
-auth_url: /auth/login
-backend_url: api.core.com
-api_url: http://localhost:3000/api
-token_endpoint: https://login.microsoftonline.com
