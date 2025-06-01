@@ -3,12 +3,22 @@
 # validate-repo.sh
 # Validates that all SOPS-encrypted YAML files can be decrypted for a given client
 # Usage:
-#   ./validate-repo.sh --client=client1
+#   ./validate-repo.sh --client=core-dev
 
 set -e
 
 CLIENT=""
-BASE_DIR=$(dirname "$0")
+BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="${BASE_DIR}"
+SOPS_CMD="sops"
+
+# Detect platform
+UNAME_OUT="$(uname -s)"
+case "${UNAME_OUT}" in
+    MINGW*|CYGWIN*|MSYS*)
+        SOPS_CMD="${REPO_ROOT}/tools/win64/sops.exe"
+        ;;
+esac
 
 # Parse arguments
 for arg in "$@"; do
@@ -24,14 +34,14 @@ for arg in "$@"; do
   esac
 done
 
-# Default to client1 if not provided
+# Default to core-dev if not provided
 if [ -z "$CLIENT" ]; then
-  CLIENT="client1"
+  CLIENT="core-dev"
 fi
 
 echo "🔍 Validating secrets for client: $CLIENT"
 
-TARGET_DIR="${BASE_DIR}/${CLIENT}"
+TARGET_DIR="${REPO_ROOT}/clients/${CLIENT}"
 
 if [ ! -d "$TARGET_DIR" ]; then
   echo "❌ Directory not found: $TARGET_DIR"
@@ -47,7 +57,7 @@ fi
 
 for file in $FILES; do
   echo "🔐 Checking: $file"
-  if sops -d "$file" >/dev/null; then
+  if "$SOPS_CMD" -d "$file" >/dev/null; then
     echo "✅ OK"
   else
     echo "❌ Failed to decrypt $file"

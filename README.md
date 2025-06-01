@@ -44,6 +44,7 @@ core-envs-private/
 │   ├── restore-gpg.sh
 │   ├── backup-check.sh        # Verifies backup integrity (cronable)
 │   └── win64/                 # (gitignored) Local sops.exe for Windows users
+│       └── sops_exe_readme.md
 ├── clients/
 │   └── core-dev/              # Client-specific configuration
 │       ├── secrets.sops.yaml
@@ -63,9 +64,57 @@ Windows users may place a local copy of `sops.exe` inside the folder:
 tools/win64/
 ```
 
-This folder is `.gitignored` and is not tracked by Git.
+This folder is `.gitignored` and is not tracked by Git. However, it is preserved in the repo via a placeholder file: `sops_exe_readme.md`, which contains download instructions.
 
-This approach ensures ease of use in Windows environments **without compromising the integrity of the repository**.
+To use SOPS in Windows:
+
+1. Download the binary from [SOPS releases](https://github.com/getsops/sops/releases).
+2. Rename it to `sops.exe` and place it in `tools/win64/`.
+3. Use it directly via:
+   ```bash
+   ./tools/win64/sops.exe -d clients/core-dev/secrets.sops.yaml
+   ```
+
+> ✅ Our scripts (like `validate-repo.sh`) detect Windows environments and automatically use this local binary if present.
+
+---
+
+## 🧪 validate-repo.sh Enhancements
+
+The validation script now supports **cross-platform use**, including Windows with Git Bash or WSL. It automatically selects the correct SOPS binary.
+
+```bash
+./validate-repo.sh --client=core-dev
+```
+
+- On **Linux/macOS**, uses `sops` from PATH
+- On **Windows (Git Bash, MSYS, etc.)**, uses `tools/win64/sops.exe`
+
+### ❗ Common Error on New Windows Machines
+
+If you get this error:
+
+```
+Failed to get the data key required to decrypt the SOPS file.
+gpg: public key decryption failed: No secret key
+```
+
+It means:
+
+- The private GPG key is missing on your system.
+- You must **import it first**, using:
+
+```bash
+gpg --import tools/private-key.asc
+```
+
+Then verify:
+
+```bash
+gpg --list-secret-keys
+```
+
+If the fingerprint does not match `C9B7D0EA72899E6D764D97279EE538D3A441F8D0`, something went wrong.
 
 ---
 
@@ -169,10 +218,10 @@ Tracks:
 
 This system guarantees:
 
+- ✅ Seamless cross-platform support (Linux + Windows)
 - ✅ Full recoverability via encrypted GPG key and trust
-- ✅ Transparent traceability via Git + metadata
-- ✅ Enforced structure and validation via `.sops.yaml` and scripts
-- ✅ No secrets ever committed to Docker images or plaintext Git
+- ✅ Developer-ready with helper scripts and README-first workflow
+- ✅ Zero plaintext secrets ever committed
 
 ---
 
