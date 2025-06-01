@@ -54,6 +54,27 @@ core-envs-private/
 │   └── security_status.md     # Active key tracking
 ```
 
+🚧 Config Safety Validation
+
+To ensure no sensitive data is accidentally stored in config.yaml, a helper script is available:
+
+./validate-config-safety.sh
+
+This script checks all clients/*/config.yaml files for dangerous keys such as:
+
+client_secret
+
+refresh_token
+
+jwt_secret
+
+internal_jwt_secret
+
+password
+
+token
+
+If any are found, the script fails and alerts you. You can add it to pre-commit or CI pipelines.
 ---
 
 ## 🪟 Windows Support

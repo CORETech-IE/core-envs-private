@@ -59,7 +59,7 @@ tools/win64/*
 !tools/win64/sops_exe_readme.md
 
 # Clients configuration files
-clients/*/config.yaml
+# Keep metadata.yaml ignored (usually not critical to version)
 clients/*/metadata.yaml
 
 # ⚠️ allow encrypted secrets (should be committed)
