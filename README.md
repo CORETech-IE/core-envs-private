@@ -9,6 +9,25 @@
 This documentation outlines the complete strategy for securely managing environment configuration and secrets for the `core-services` Docker deployments, using **SOPS**, **GPG**, and a **Git-based repository**. It includes all critical steps required to replicate, restore, or recover the system even in the event of total personnel loss.
 
 ---
+📂 Client Configuration Files
+
+Each client has a dedicated folder inside clients/, which contains two types of files:
+
+✅ Public (versioned in Git)
+
+config.yaml: Non-sensitive configuration (hostnames, ports, service URLs)
+
+metadata.yaml: Metadata about the client environment (template version, environment name, etc.)
+
+These files are safe to commit and provide useful audit trails, environment info, and config visibility.
+
+🔒 Encrypted (via SOPS)
+
+secrets.sops.yaml: All sensitive credentials (client secrets, tokens, passwords)
+
+This file is always encrypted with GPG and validated before use.
+
+---
 
 ## 🧱 Architecture Overview
 

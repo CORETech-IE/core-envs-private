@@ -25,6 +25,10 @@
       "type": "number",
       "description": "Port used to expose backend services (e.g. 3000)"
     },
+    "backend_port": {
+      "type": "number",
+      "description": "Port used to expose backend services (e.g. 3000)"
+    },
     "auth_url": {
       "type": "string",
       "format": "uri",
