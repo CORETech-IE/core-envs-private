@@ -1,4 +1,4 @@
-template_version: v1.0.0
+template_version: v1.0.1
 deployed_by: alejandro.prado@coretechnology.ie
-last_update: "2025-05-31"
-notes: Initial deployment for CORE.DEV using PDF + Email services.
+last_update: "2025-06-02"
+notes: Added PDF digital signature using .p12 cert and ABAC validation via /send-with-consent

@@ -6,3 +6,5 @@ auth_url: /auth/login
 backend_url: api.core.com
 api_url: http://localhost:3000/api
 token_endpoint: https://login.microsoftonline.com
+cert_pdf_sign_path: c:\CORE\certs\certificate.p12
+cert_pdf_sign_type: p12

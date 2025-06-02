@@ -7,3 +7,5 @@ auth_url: /auth/login                                # Relative URL for authenti
 backend_url: api.core.com                            # Base URL for the backend API (used for client communication)
 api_url: http://localhost:3000/api                   # Full URL for core-services API access
 token_endpoint: https://login.microsoftonline.com    # Azure OAuth2 token endpoint
+cert_pdf_sign_path: /certs/pdf-sign.pfx              # Path to the PDF signing certificate (PFX file) 
+cert_pdf_sign_type: p12                              # Type of the certificate file (e.g., p12, pfx) 
