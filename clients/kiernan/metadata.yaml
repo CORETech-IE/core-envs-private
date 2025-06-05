@@ -1,0 +1,6 @@
+template_version: v1.0.0
+deployed_by: alejandro.prado@coretechnology.ie
+last_update: "2025-06-05"
+notes: >
+  Initial deployment for Kiernan.
+  Still on testing. We don't have a proper Key Vault yet.
