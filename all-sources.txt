@@ -1,0 +1,1112 @@
+// .gitignore
+# -----------------------------------------------------------------------------
+# Based on GitHub's Shell.gitignore + custom rules for encrypted YAML management
+# -----------------------------------------------------------------------------
+
+# Compiled object files and binaries
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Log files
+*.log
+
+# Editor swap and temp files
+*.swp
+*.bak
+*.tmp
+*~
+
+# Editor backup files
+*.orig
+*.rej
+*.sublime-workspace
+*.sublime-project
+
+# OS-specific hidden files
+.DS_Store
+ehthumbs.db
+Icon?
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Secrets and decrypted config protection
+# -----------------------------------------------------------------------------
+
+# Decrypted or temporary versions of sensitive YAML files
+**/secrets.yaml
+**/config.decrypted.yaml
+**/*.decrypted.*
+**/*.plaintext.*
+
+# Environment variable files (never commit!)
+.env
+*.env
+
+# Temporary validation or debug output
+validate-repo.log
+debug.log
+
+# Tools backup protection
+tools/private-key.asc
+tools/*.gpg
+
+# Local binaries
+tools/win64/*
+!tools/win64/sops_exe_readme.md
+
+# ⚠️ allow encrypted secrets (should be committed)
+!clients/*/secrets.sops.yaml
+
+// .sops.yaml
+creation_rules:
+  - path_regex: .*\.sops\.yaml$
+    encrypted_regex: '^(.*)$'
+    pgp: 'C9B7D0EA72899E6D764D97279EE538D3A441F8D0'
+
+// README.md
+# Secure Environment Configuration with GPG and SOPS  
+**Internal Engineering / DevOps / IT Security**  
+**Status: Final (Ready for Disaster Recovery)**
+
+---
+
+## 🔐 Purpose
+
+This documentation outlines the complete strategy for securely managing environment configuration and secrets for the `core-services` Docker deployments, using **SOPS**, **GPG**, and a **Git-based repository**. It includes all critical steps required to replicate, restore, or recover the system even in the event of total personnel loss.
+
+---
+📂 Client Configuration Files
+
+Each client has a dedicated folder inside clients/, which contains two types of files:
+
+✅ Public (versioned in Git)
+
+config.yaml: Non-sensitive configuration (hostnames, ports, service URLs)
+
+metadata.yaml: Metadata about the client environment (template version, environment name, etc.)
+
+These files are safe to commit and provide useful audit trails, environment info, and config visibility.
+
+🔒 Encrypted (via SOPS)
+
+secrets.sops.yaml: All sensitive credentials (client secrets, tokens, passwords)
+
+This file is always encrypted with GPG and validated before use.
+
+---
+
+## 🧱 Architecture Overview
+
+### Components
+
+- `core-envs-private` (Git repo): Holds encrypted secrets and configuration per client.
+- `core-services`: Docker container using config.yaml decrypted from secrets.sops.yaml.
+- `SOPS`: Handles encryption/decryption using GPG.
+- `GPG`: Manages encryption keys.
+
+### Deployment Flow
+
+- `secrets.sops.yaml` is decrypted into `config.yaml` at deployment time.
+- The decrypted config is mounted inside the container.
+- `validate-repo.sh` ensures files are decryptable.
+
+---
+
+## 📦 Repository Structure
+
+```
+core-envs-private/
+├── .sops.yaml                 # Encryption rules
+├── validate-repo.sh           # Validation script
+├── templates/                 # Template files for new clients
+│   ├── config-template.yaml
+│   ├── secrets-template.yaml
+│   └── metadata-template.yaml
+├── tools/                     # GPG key backup/restore scripts
+│   ├── public-key.asc
+│   ├── ownertrust.txt
+│   ├── backup-gpg.sh
+│   ├── restore-gpg.sh
+│   ├── backup-check.sh        # Verifies backup integrity (cronable)
+│   └── win64/                 # (gitignored) Local sops.exe for Windows users
+│       └── sops_exe_readme.md
+├── clients/
+│   └── core-dev/              # Client-specific configuration
+│       ├── secrets.sops.yaml
+│       ├── config.yaml
+│       ├── metadata.yaml
+├── docs/
+│   └── security_status.md     # Active key tracking
+```
+
+🚧 Config Safety Validation
+
+To ensure no sensitive data is accidentally stored in config.yaml, a helper script is available:
+
+./validate-config-safety.sh
+
+This script checks all clients/*/config.yaml files for dangerous keys such as:
+
+client_secret
+
+refresh_token
+
+jwt_secret
+
+internal_jwt_secret
+
+password
+
+token
+
+If any are found, the script fails and alerts you. You can add it to pre-commit or CI pipelines.
+---
+
+## 🪟 Windows Support
+
+Windows users may place a local copy of `sops.exe` inside the folder:
+
+```
+tools/win64/
+```
+
+This folder is `.gitignored` and is not tracked by Git. However, it is preserved in the repo via a placeholder file: `sops_exe_readme.md`, which contains download instructions.
+
+To use SOPS in Windows:
+
+1. Download the binary from [SOPS releases](https://github.com/getsops/sops/releases).
+2. Rename it to `sops.exe` and place it in `tools/win64/`.
+3. Use it directly via:
+   ```bash
+   ./tools/win64/sops.exe -d clients/core-dev/secrets.sops.yaml
+   ```
+
+> ✅ Our scripts (like `validate-repo.sh`) detect Windows environments and automatically use this local binary if present.
+
+---
+
+## 🧪 validate-repo.sh Enhancements
+
+The validation script now supports **cross-platform use**, including Windows with Git Bash or WSL. It automatically selects the correct SOPS binary.
+
+```bash
+./validate-repo.sh --client=core-dev
+```
+
+- On **Linux/macOS**, uses `sops` from PATH
+- On **Windows (Git Bash, MSYS, etc.)**, uses `tools/win64/sops.exe`
+
+### ❗ Common Error on New Windows Machines
+
+If you get this error:
+
+```
+Failed to get the data key required to decrypt the SOPS file.
+gpg: public key decryption failed: No secret key
+```
+
+It means:
+
+- The private GPG key is missing on your system.
+- You must **import it first**, using:
+
+```bash
+gpg --import tools/private-key.asc
+```
+
+Then verify:
+
+```bash
+gpg --list-secret-keys
+```
+
+If the fingerprint does not match `C9B7D0EA72899E6D764D97279EE538D3A441F8D0`, something went wrong.
+
+---
+
+## 🔑 GPG Key Management
+
+### Active Key Info
+
+- **Fingerprint**: `C9B7D0EA72899E6D764D97279EE538D3A441F8D0`
+- **Created**: 2025-05-31
+- **Expires**: 2026-05-31
+- **Key Size**: RSA 4096
+
+### Backup Location (Do NOT lose)
+
+- `private-key.asc.gpg` → Stored in **OneDrive (Volaris)**
+- `ownertrust.txt` → Restores trust level
+- `public-key.asc` → Safe to share, stored in Git
+
+🔒 Additional backups on **encrypted USB** and optionally **cloud vault** (e.g., S3 + KMS)
+
+### Backup Scripts
+
+- `tools/backup-gpg.sh` → Generates backup files
+- `tools/restore-gpg.sh` → Restores key + trust on new machine
+
+### Rotation Plan
+
+Mandatory **yearly rotation** or earlier if needed.
+
+#### Procedure:
+1. Generate new key
+2. Add to `.sops.yaml`
+3. Re-encrypt all secrets with both keys
+4. Test restore
+5. Remove old key
+
+---
+
+## 🔒 .sops.yaml Rules
+
+```yaml
+creation_rules:
+  - path_regex: .*\.sops\.yaml$
+    encrypted_regex: '^(.*)$'
+    pgp: 'C9B7D0EA72899E6D764D97279EE538D3A441F8D0'
+```
+
+---
+
+## 🔧 Validation
+
+```bash
+./validate-repo.sh
+```
+
+- Decrypts all `*.sops.yaml` files
+- Fails if any cannot be decrypted (e.g., expired key or missing access)
+
+---
+
+## 🚀 Deployment
+
+Each client decrypts secrets locally into a temporary config, then starts containers:
+
+```bash
+git clone git@github.com:yourorg/core-envs-private.git && cd core-envs-private/clients/core-dev
+sops -d secrets.sops.yaml > /etc/core-services/config.yaml
+cp config.yaml /etc/core-services/
+docker-compose up -d
+```
+
+---
+
+## 📑 Security Status File
+
+Located at: `docs/security_status.md`
+
+Tracks:
+
+- Active key info
+- Expiration
+- Rotation schedule
+- Backup confirmation
+- Fingerprint explanation
+
+---
+
+## 🧯 If Alejandro Prado is Dead™
+
+1. Clone the repo `core-envs-private`
+2. Use `tools/restore-gpg.sh` on any machine with GPG installed
+3. You will need the passphrase for `private-key.asc.gpg`.  
+   If not stored in vault, **you’re screwed**.
+4. Once imported, you can decrypt all existing `*.sops.yaml` files.
+5. Review `docs/security_status.md` to check key validity.
+6. If key is expired or rotation is due, follow the documented rotation plan.
+
+---
+
+## ✅ Summary
+
+This system guarantees:
+
+- ✅ Seamless cross-platform support (Linux + Windows)
+- ✅ Full recoverability via encrypted GPG key and trust
+- ✅ Developer-ready with helper scripts and README-first workflow
+- ✅ Zero plaintext secrets ever committed
+
+---
+
+## ⚙️ Example of use:
+
+### Step 1: Encrypt the secrets
+
+```bash
+./tools/win64/sops.exe -e ./clients/core-dev/secrets.sops.yaml > ./clients/core-dev/secrets.tmp.yaml && mv ./clients/core-dev/secrets.tmp.yaml ./clients/core-dev/secrets.sops.yaml
+```
+
+### Step 2: Validate the encrypted yaml
+
+```bash
+./tools/win64/sops.exe -d ./clients/core-dev/secrets.sops.yaml
+```
+
+// all-sources.txt
+
+// client-templates/config-template.yaml
+# Client configuration template (non-sensitive data only)
+
+tenant_client_id: CORE.DEV                           # Unique identifier for the client (used for tenant separation)
+core_api_host: http://localhost                      # Hostname or IP where core-services backend is running
+services_port: 3000                                  # Port number where backend services are exposed
+auth_url: /auth/login                                # Relative URL for authentication endpoint
+backend_url: api.core.com                            # Base URL for the backend API (used for client communication)
+api_url: http://localhost:3000/api                   # Full URL for core-services API access
+token_endpoint: https://login.microsoftonline.com    # Azure OAuth2 token endpoint
+cert_pdf_sign_path: /certs/pdf-sign.pfx              # Path to the PDF signing certificate (PFX file) 
+cert_pdf_sign_type: p12                              # Type of the certificate file (e.g., p12, pfx) 
+// client-templates/metadata-template.yaml
+template_version: v1.0.0
+deployed_by: your.name@yourdomain.com
+last_update: "1999-01-01"
+notes: >
+  Initial deployment for clientXYZ.
+  Describe template version used and any relevant context.
+
+// client-templates/secrets-template.sops.yaml
+# Client secrets template (sensitive values to be encrypted with SOPS)
+
+sender_email: notifications@example.com         # Sender email address used to send messages
+client_id: your-azure-client-id                 # Azure-registered application Client ID (OAuth2)
+client_secret: your-azure-client-secret         # Azure-registered application Client Secret (OAuth2)
+tenant_id: your-azure-tenant-id                 # Azure Tenant ID where app is registered
+refresh_token: your-oauth2-refresh-token        # Valid OAuth2 refresh token
+jwt_secret: your-public-jwt-secret              # Secret for signing/verifying API JWTs
+internal_jwt_secret: your-internal-jwt-secret   # Secret for internal system JWTs
+auth_username: internal-auth-username           # Username for internal auth endpoint
+auth_password: internal-auth-password           # Password for internal auth user
+cert_pdf_sign_password: your-pdf-sign-password  # Password for signing PDF documents
+// clients/core-dev/config.yaml
+tenant_client_id: CORE.DEV
+core_api_host: http://localhost
+services_port: 3001
+backend_port: 3000
+auth_url: /auth/login
+backend_url: api.core.com
+api_url: http://localhost:3000/api
+token_endpoint: https://login.microsoftonline.com
+cert_pdf_sign_path: c:\CORE\certs\certificate.p12
+cert_pdf_sign_type: p12
+// clients/core-dev/metadata.yaml
+template_version: v1.0.1
+deployed_by: alejandro.prado@coretechnology.ie
+last_update: "2025-06-02"
+notes: Added PDF digital signature using .p12 cert and ABAC validation via /send-with-consent
+// clients/core-dev/secrets.sops.yaml
+sender_email: ENC[AES256_GCM,data:aDfeEqHECnZdtxJWq0fivr8c5GXZGK8xRzc4,iv:QpsIiZgXusEgS0CNmTIzwu1/oDJd+K/EbeAKj6GYI4A=,tag:ywXOJsWBNB0J2IfspCitBw==,type:str]
+client_id: ENC[AES256_GCM,data:GRR2RLOIUKJ/Tcc4+49+RvkWXlqNGAWhMe9P20kaVdreuX9J,iv:K7Qh1dvBZUIjzKYEe6M4qvonn50fSdapbYAA95RDxRU=,tag:ZSUEcuZz5BFCQL4tD9fQIg==,type:str]
+client_secret: ENC[AES256_GCM,data:13OLwJXqrCDwSYSg0KB42lfPix8IulJruYxO4rcD4LwBffqIhcdvgA==,iv:dMRNNVOKAnoksju1y4S6Rb3JAo44gu4atpHL+T1djzA=,tag:/az4rNmc5Sejp7P/H1ot4w==,type:str]
+tenant_id: ENC[AES256_GCM,data:Fp9Zdirs+lylP1xumAuEpkNlcb7lEfeSWsnLVs5YF5M3pvP3,iv:ZLpE+9wmUOOBaH/4APjWwHT2QlwQ6tbOTMyhUVJbJzQ=,tag:n+em/ZdeQIVYPZqdU+uNRw==,type:str]
+refresh_token: ENC[AES256_GCM,data:cu6lJby0YC3d8o+tRkp1WgNeO6LL,iv:Q8B/ZQy3fTunBIOQPlCM8G/kS4urjsQ6upf4nQuUmOI=,tag:5MJoj5qgnO4xkldgmK6Xlw==,type:str]
+jwt_secret: ENC[AES256_GCM,data:pX1j/focBSqReSpbWeVK5VoLKXJZ+kb+bHVWMzor6cc=,iv:kcFNkJOSt/wNkaKzsQyHjKWd7GX6K3Xe44XTzflszkw=,tag:jvD+HbCOPyzoPF9GWfkB6A==,type:str]
+internal_jwt_secret: ENC[AES256_GCM,data:oeKnYUYaCj+uPqlhArMI0KI9xOZ9kyQ2r9pGjK/fLiM77iE7ohCAMJhDbK+6KLqwk7ZJhBDMkBQT8h3w,iv:qyQYeWGktPujVsS0v1itX88c43096WyqvKBKdEGvC0o=,tag:XtCbvO6l/YOJUP332u0C7A==,type:str]
+auth_username: ENC[AES256_GCM,data:aizsi+I=,iv:n0YFSELoK9gXMYaTM2SnK/y4pAHpVggrgZCqNCg2wF0=,tag:wadm2/qePgzvVp3ZgfdsXA==,type:str]
+auth_password: ENC[AES256_GCM,data:R9F5NPMud8/x3zBhMQ==,iv:dUhC6lKlivUdiNeyoTJpd452hBlr602zxTFltfhbozI=,tag:85qrf06w7C19RhnrTglyvQ==,type:str]
+cert_pdf_sign_password: ENC[AES256_GCM,data:P1z1EELMsQ5j4sI=,iv:EgZTrCwuJQFQOWtolji1PZE22pYYyOYS9iXXrFXIbXc=,tag:nkHZkHB84MnsN7fvLWOJaA==,type:str]
+sops:
+    lastmodified: "2025-06-02T15:11:18Z"
+    mac: ENC[AES256_GCM,data:0SVVEOA+9gozMKO7EXGnw+ZLLQnJMpVXyLdilZt6QPSCVLKei44/oAt4/NSMQzLTq3QVqXGZBmvtE2r0H2LsIGfVu3I7cSnaD+tgPjT3qtgGDw4l0HYRVarx5GYgxyXQoqa9taJQZJMPv0b46jArM724fp56z9E1NxaXdwrUbpw=,iv:JDlhMeGPXWB26XDE/YD/wJhrA3xejhfqJfddYgjasMY=,tag:/B9379dTH8x+BTb9UHTCyw==,type:str]
+    pgp:
+        - created_at: "2025-06-02T15:11:18Z"
+          enc: |-
+            -----BEGIN PGP MESSAGE-----
+
+            hQIMAzDVQtyzoi6xAQ/7BwUtV7oKZuOXGIeEJzRVd6/l3azCWe4SQM0IDuX4Esof
+            GekAz9u8UyZhUAHmAfLCN7b3eVxEdhoBW8zS26FvAAj/cydL98nh3DNRbk90xjKC
+            FbgDZcJD4+1IHjvPcr3E6OR8K3RHXfBomW4bkKmwvbWF+NGURQ71ObDIX6BbFydt
+            XHRG/5WgI9w8TLqjw66X8mg2FixxSBoTNjCgJWM6Ca7ajJBM3Q5xGs92u4qtWAoC
+            Cc456BsVgIsug5UBriiV+Mt+4sURUL9irleuukgN4aYNhxuPf6XoOGzScicGpGwO
+            J5+ES995Kfsxy3RgdD0K5NEBimG5FOjbroUhBSCfKDimkGhDLUYkip4BOsj+NwPq
+            crJZYJtPwKHX3eYasW0g9gZtasJrzmmq8TkpqbjzPSw1zS1ovWCPjLDTgDDBwLr2
+            rGE6eF2n5jk22OBg3u9i8aGl2opLbF7VweyL8mmWz7G2uK0YQRDiIYu7BycpI+A6
+            4sg36yjLadUr1dIxPpIzq98BtmqBjlLxu2MOSKaJd0/0tFfP/K7eLBppUvGj+iCZ
+            F2iGm0BvOwhKiO8CNq6D7r/Z2N9MaaSWWQp1mtJJRAXjWsVhNxbQ6LF0Us5+DNce
+            belCD2RTax/VcScm0CP0DNpafXQPRPqxVQXJC0n9lC78kYSxSlqRbpH3xzSU1nrU
+            aAEJAhDEtNveOXRhaNh2N6FdCAoxb0GYLb9hhDF+7OUSfqilquN5HmLDxFMTpdlQ
+            I42MG8ETJGnI2/RkxV+NTF3QCxHcsA+DrXc/G1XE5uEL3dJIcFSOZjUQRPcffjUW
+            e+QRDwr+OE1V
+            =aMsE
+            -----END PGP MESSAGE-----
+          fp: C9B7D0EA72899E6D764D97279EE538D3A441F8D0
+    encrypted_regex: ^(.*)$
+    version: 3.10.2
+
+// clients/core-qa/config.yaml
+tenant_client_id: CORE.DEV
+core_api_host: http://localhost
+services_port: 3000
+auth_url: /auth/login
+backend_url: api.core.com
+api_url: http://localhost:3000/api
+token_endpoint: https://login.microsoftonline.com
+
+// clients/core-qa/metadata.yaml
+template_version: v1.0.0
+deployed_by: alejandro.prado@coretechnology.ie
+last_update: "2025-05-31"
+notes: Initial deployment for CORE.DEV using PDF + Email services.
+// clients/core-qa/secrets.sops.yaml
+sender_email: ENC[AES256_GCM,data:O7AYRFdk/EmxNVvmGKfi2YONvQUkolibOzV0,iv:65DAtoolVJLvHJVqnLdwXA9ZgP2vQIxlPTlDS1PoMkw=,tag:diZz5Xa+Hu4QTdfKn0EQQA==,type:str]
+client_id: ENC[AES256_GCM,data:IV7taleT0B36RfWVWkx4d9LouVgZ5rqm7G/ayw64D1zkurI8,iv:OTSUYEn/oNimdKKlYvf8/M9osR1La/ga/rc7QGYzLu8=,tag:VdqeCUVhEqJUVCH9YTlJIg==,type:str]
+client_secret: ENC[AES256_GCM,data:wbY3rWNXR2dA9jfu/gnPYZQVH54M2M7MGnPG4AE3LRBVhwVNQRNxzw==,iv:WH5tvyNCmLmlKPuoXQ3lGTSYZjgQpR4hGarergID+S0=,tag:dl7TTgfG/w+HWKov5rfB8A==,type:str]
+tenant_id: ENC[AES256_GCM,data:6ViMOTmgvKalhJx31LXwK4l7YUM/DpKj2QW6lxDTvldAdGUe,iv:j5bQrFQDzou/lZKzr1U3d+S/cvuemKGDpVHElGWR8Fo=,tag:NHAZvXkZcSNPV/6GcRNQKA==,type:str]
+refresh_token: ENC[AES256_GCM,data:MFVCwM4D4uCbX/89s9lHG1S/+EHj,iv:Kqls0WklwyEwmsOGfc7OnjUhiL3tgqxZ3XcreNktZWs=,tag:cSPuiUr4a1X0S8qD5gFeDw==,type:str]
+jwt_secret: ENC[AES256_GCM,data:hlCjSv3pHqdQO8ZSwSZ5Z1tbLpZey9D2nl2pESIwXIw=,iv:C6qL7iwVhuY+UmyQrzkppukN60ikkkqS5gXJdTct68M=,tag:qTdZstzbRYyb7/Ook79c2g==,type:str]
+internal_jwt_secret: ENC[AES256_GCM,data:VyZ2WATh+0vK5jQSUjNshLPcsQKlRofqPtYgruXIDhJXACEM3duFekPFqSPVkaZE/n3DfOMkxekyMYYf,iv:Sunr9wOYaORvDS8iMAycNpdUCPUamZARA0NVvqyBCig=,tag:kivhvo48tjCQmNdQGoFYWg==,type:str]
+auth_username: ENC[AES256_GCM,data:VU/Pca8=,iv:VyJ4T8GXUkBmQrEEm1yyVXhHXS4Kx4wwuVyICs7P45I=,tag:vXHLWm9SzkmVxbmNvCMVpw==,type:str]
+auth_password: ENC[AES256_GCM,data:raJsEEzoP/jGUzAysQ==,iv:2qYwVk5eG5notY450cIypRULzRQLTfkf6x3OcKZFass=,tag:u4pMjINJ8mXN6B+l3pBkqA==,type:str]
+sops:
+    lastmodified: "2025-05-31T16:08:03Z"
+    mac: ENC[AES256_GCM,data:jNSbE1B9hpaZTSIdi2WwivGXPr+tFTYBg2gINVMeXg6WM8tD1zFUKnbLI3Sy9YiB2VUygXkYG2QdaBBHPvGcTMvJ1SiHIc+gOLZvTGzhtI8C1OVapZrRUFI4+Dg6KYdE+jIJPtAORB5pcB+vnf1EnZYdqedbu4WN6z6k/ui8kX4=,iv:Fib9cnW5c7VygAny+QT6bNcd6kG51FB9MT3uoLMun0E=,tag:lmOyGKWMRJzWYO5HwYlLSw==,type:str]
+    pgp:
+        - created_at: "2025-05-31T16:08:02Z"
+          enc: |-
+            -----BEGIN PGP MESSAGE-----
+
+            hQIMAzDVQtyzoi6xAQ/+KgU2skWbafVnAxvKA9thvoY4jw7Oa3D0tr8NtKHUQ/Fw
+            /NA2KPKjtFzV1PlaG3vZdXKypYf6S6sSpp5qYa2gurxskx2BlJqcrNP9sOHIH4pv
+            NRBPeoq56ZN4eKYFikbcpC4V564f0G+o7R4c8K4oNurEOz7wobTzQCO+doVbfz5j
+            A7Aaon0RHEkuT8lCg1PMv7XQ3ckF/rBMA76Ok5PN1XSu8QfH62038QgcD39jYalB
+            B6flubzyZsGb7BzOPtGTqQFQ5wRaB5eRYPXE9yK1h3PXvj6MWJaRhBf9irVdVaf0
+            E2ZjcWjTsoNEMEsWwUtPvpjbAC2othMNg6Td/TgHqEtFEfxLU5nTMw+AVH9VFP9O
+            x+TwXX/IHwIgpNKhZTJXLSUsmpG5r3CQuFLA1aCav/RgwT7sylnynV5iEJHrjeZ1
+            gEHGGis9WpwdIYB5rjvlYrobEol7QCwLlnfTjLelGhfyCudTWoLXRzsmWBPC4x6z
+            acaLUa/JXkC2WfZRUPGmJ8C2s2xwkKvaLliac6UV73u1kKZOGDr1iGg4ka5gy/3X
+            UTSaVG0YiuvcUyxptBZQQhUHw7Pdl5MS0MQBzUlnXOyH3GxZx9MPBtwSIES76hsr
+            /xTh1doO0Rd2WGU63Cefke/kecyrhsCGLI8eW69xnm4rRxkBS99db6CKPtnuQIvU
+            ZgEJAhBRKJzCjX3fV6GZk9JT8fmoTa6xJVsrLJcNZRNlcT2ioZY6txW5cXUcw2BT
+            MGotYBSZB+LrQuXdroRgPN7Z0SwjWVHo8wNevUG4JoTfDSwN1UAgOluhuFI0k54R
+            PEtHfIfOnw==
+            =iiI7
+            -----END PGP MESSAGE-----
+          fp: C9B7D0EA72899E6D764D97279EE538D3A441F8D0
+    encrypted_regex: ^(.*)$
+    version: 3.10.2
+
+// clients/kiernan/config.yaml
+# Client configuration template (non-sensitive data only)
+
+tenant_client_id: KIERNAN                            # Unique identifier for the client (used for tenant separation)
+core_api_host: http://localhost                      # Hostname or IP where core-services backend is running
+services_port: 3001                                  # Port number where backend services are exposed
+auth_url: /auth/login                                # Relative URL for authentication endpoint
+backend_url: api.core.com                            # Base URL for the backend API (used for client communication)
+api_url: http://localhost:3001/api                   # Full URL for core-services API access
+token_endpoint: https://login.microsoftonline.com    # Azure OAuth2 token endpoint
+cert_pdf_sign_path: /certs/pdf-sign.pfx              # Path to the PDF signing certificate (PFX file) 
+cert_pdf_sign_type: p12                              # Type of the certificate file (e.g., p12, pfx) 
+// clients/kiernan/metadata.yaml
+template_version: v1.0.0
+deployed_by: alejandro.prado@coretechnology.ie
+last_update: "2025-06-05"
+notes: >
+  Initial deployment for Kiernan.
+  Still on testing. We don't have a proper Key Vault yet.
+
+// clients/kiernan/secrets.sops.yaml
+# Client secrets template (sensitive values to be encrypted with SOPS)
+# Sender email address used to send messages
+sender_email: ENC[AES256_GCM,data:qL1ru2U9z5yOampNmS2uUCESrpQLAK9Vuw==,iv:lWuckRs/p8FejRVXCt3/2Br1WshmF8cB4G6DghmWmy8=,tag:3GddEigsyQcpwzerrn7YHg==,type:str]
+# Azure-registered application Client ID (OAuth2)
+client_id: ENC[AES256_GCM,data:bd5Opx4R82X/f5+qTInNqZUWwLw=,iv:jXnlt1VRkPUCQlh3wVqB2uH1+FgMGGC7MDSIQbT2ERA=,tag:Bi5eJ0OHagZAO9KGznjBow==,type:str]
+# Azure-registered application Client Secret (OAuth2)
+client_secret: ENC[AES256_GCM,data:5qJec/AD1O4VjattfKj2zS/ovzMtcBEv,iv:Yxce2hRtpHdtrLrlk9qdMPy7bhROjb42zTUYj/i0hG4=,tag:/Xi1T1HOaCZJJmXHM8x05Q==,type:str]
+# Azure Tenant ID where app is registered
+tenant_id: ENC[AES256_GCM,data:HS4VbN3Xa83ZtBCfzOCErwDCb/E=,iv:lLrzdZtBZ+HkQdkmMr8eIcN3/gkAcQViGONnDT1qYqM=,tag:jcFzlvIESsXuFUNfdPbR/Q==,type:str]
+# Valid OAuth2 refresh token
+refresh_token: ENC[AES256_GCM,data:0+cWVIOoIZdHYF3+Ch0BdxYNRjRayoDmvg==,iv:Al4gT2pdwGUgsoWpDPWYfaq5MuTmj6+IyfZOvCn9tLU=,tag:Jq/CFBzZtImQhwnFArGz9Q==,type:str]
+# Secret for signing/verifying API JWTs
+jwt_secret: ENC[AES256_GCM,data:S58T2tkcEGyO/ny69MyM2P5T4+2AtA==,iv:Gc1jSLUaarcIC7WCOy4i98aGPXRkzHcur2gKTIxLPAE=,tag:YwwK/YjMN2td2MMrQ9woLA==,type:str]
+# Secret for internal system JWTs
+internal_jwt_secret: ENC[AES256_GCM,data:nPzuRDMMUQ3xA6uCY0MIlLBRzsOVfGWY,iv:LwLj8+KnWNF+IczWd3K84GgyLTYeAd83Z5XZR3a3+ig=,tag:sYsorJRTGdlq+jSP+uwaGw==,type:str]
+# Username for internal auth endpoint
+auth_username: ENC[AES256_GCM,data:JwRBXrnCSqboUmS9cZdG69NNK/iIag==,iv:f2epExKMWr3OCCP0tqlp7bcqe8PqQeC+e8/xwmp5q/w=,tag:jWtVDCSjT8AsJbGz5ggTvw==,type:str]
+# Password for internal auth user
+auth_password: ENC[AES256_GCM,data:n7LczgnLWVgNc+F9sCIpjCqmSPnxHQ==,iv:LQE7/22e7HRmI/NfruNNOi8tG97Z8T6EU7xKMBT3iDo=,tag:ZS7x+MLyPv8S3xarrwUZcA==,type:str]
+# Password for signing PDF documents
+cert_pdf_sign_password: ENC[AES256_GCM,data:cjT4DhReGPy5VKpAJK9gY+Mqa7sBuA==,iv:XJBaFI2OVSDw2Ufxp0jM5DPj6/Fw5utHo7GYT0uuYN4=,tag:TWzltoBfsW+uan/hcbjwdA==,type:str]
+sops:
+    lastmodified: "2025-06-05T12:53:04Z"
+    mac: ENC[AES256_GCM,data:KBRpSbuUnaZ1nabqJ8drLt9CXphsyH/zWMlCGeXW6TSjul/Oqaqx1b5yP4RnUFXM0phifQj02O48LWGLouaJzPI9HpD5KGvm2FB4fHMaOynCmW4S5nwCq21CXH7ReB1X538JsfIlf/e4/GCypqwuNPyJ/yNc8wY4a6Mfv5uLRAA=,iv:eVMjkilWckPVzH60N1vvIlitlV7mK6U9PxYPDTZdTfI=,tag:6k1KVHDr2HYrjBqXS2DaMQ==,type:str]
+    pgp:
+        - created_at: "2025-06-05T12:53:04Z"
+          enc: |-
+            -----BEGIN PGP MESSAGE-----
+
+            wcFMAzDVQtyzoi6xARAApUAGLR7UUrJg3H9CjkK5f8F2+nw3AF/P04YO6BvO4MhD
+            CK3EbrnkQVh28BZ0GkYzIg6Pjl8ZixKoyxpuF7WpGM788PuSjy/dAw1/BT0A3wK/
+            /2ZdZMCscsZVtv+Ac99rrPMRbDsC5xwbKBMqU3oHLVkWj1rfJ8/mft3xS+pRz+yV
+            jOsBWyJws1EFTl5ZgkwwVFm4u1Zdlc+jXA3qDCviOapyIlq4Ta7q8e88CY8b3Dbj
+            iVkGUld+Z73AvxLUTbGb/iSwwHrYAuyOjP/ZHG4rCrlioBjc0aXhEF6plbBVZZLy
+            Xuo2nqF5bkm/dikHG5DGWwrfBC77cs9fm+4tnOo0ewxg4y2+X1L7iVibHXAtTOwD
+            xxcLAA9wLAWxps7tXFdEW4dB2PQ90VXeI4aBit4VHaffJTY26VWiG4uYTeeLTOmv
+            gCqiCa0iTnb6NMawk9NKMxgC/LoVRgdIqAFY86/P3LQT/Ct6EgQeLuSzDvwUWiH0
+            MKcc17QsBPVLGuCNEniwZGbomJb97xTvPYP5mAbUAPgBdC9p9SGyFJrCdU/VotXF
+            bPmn9ZKPelt37xKXGsJhSjk0Je0R11GytRr1To9V+TekSyNbOFfL9zgOqbnm52za
+            ENVf18OXSs1YQLSt0/U1a1Ekc8LXKiVofmW2wx1C2LdLKjiA0AD+UE9dxSSFcbDS
+            UQFvXDHTbs2qmezXnBjg3sA6nSytRnzHphQ57pMXatkg/IyjuWOOl1WyEvO3oYmK
+            zHBKalyJfOg/y4GfE5KRjCBIXRjxEvzVZyQkqeTSylUQwQ==
+            =/479
+            -----END PGP MESSAGE-----
+          fp: C9B7D0EA72899E6D764D97279EE538D3A441F8D0
+    encrypted_regex: ^(.*)$
+    version: 3.10.2
+
+// collect-files.sh
+#!/bin/bash
+
+# Directorio fuente (por defecto ./)
+SOURCE_DIR=${1:-"./"}
+
+# Archivo de salida (por defecto all-sources.txt)
+OUTPUT_FILE=${2:-"all-sources.txt"}
+
+# Verificar que el directorio existe
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "❌ El directorio $SOURCE_DIR no existe"
+    exit 1
+fi
+
+echo "🔍 Buscando archivos .* en: $SOURCE_DIR"
+
+# Limpiar archivo de salida
+> "$OUTPUT_FILE"
+
+# Contador de archivos
+count=0
+
+# Buscar todos los archivos .* y procesarlos
+find "$SOURCE_DIR" -name "*.*" -type f | sort | while read -r file; do
+    # Obtener ruta relativa
+    relative_path=$(realpath --relative-to="$SOURCE_DIR" "$file")
+    
+    # Escribir comentario con la ruta
+    echo "// $relative_path" >> "$OUTPUT_FILE"
+    
+    # Escribir contenido del archivo
+    cat "$file" >> "$OUTPUT_FILE"
+    
+    # Línea en blanco para separar archivos
+    echo "" >> "$OUTPUT_FILE"
+    
+    ((count++))
+done
+
+echo "✅ $count archivos recopilados en: $OUTPUT_FILE"
+// docs/security_status.md
+# 🔐 Security Status — core-envs-private
+
+This file tracks the current GPG key(s) used for encrypting client secrets via SOPS.  
+All entries must be kept up to date as keys are created, rotated, or revoked.
+
+---
+
+## ✅ Active GPG Key
+
+- **Fingerprint:** C9B7D0EA72899E6D764D97279EE538D3A441F8D0
+- **Created on:** 2025-05-31
+- **Expires on:** 2026-05-31
+- **Key size:** RSA 4096 bits
+- **Comment:** infra-core-services
+- **Public key file:** `tools/public-key.asc`
+- **Ownertrust file:** `tools/ownertrust.txt`
+- **Maintainer:** Alejandro Prado
+
+---
+
+## 🔄 Rotation Plan
+
+- Next rotation deadline: **before 2026-05-15**
+- Rotation procedure:
+  - Generate new key with expiration
+  - Add new fingerprint to `.sops.yaml`
+  - Re-encrypt all secrets with both keys
+  - Distribute new public key if needed
+  - Confirm restore works
+  - Remove old key from `.sops.yaml`
+- Key rotation is mandatory every 12 months or earlier if team changes occur
+
+---
+
+## 🔐 Backup Confirmation
+
+| Item                    | Status | Notes                        |
+|-------------------------|--------|------------------------------|
+| Encrypted private key   | ✅     | `private-key.asc.gpg` exists |
+| Public key              | ✅     | Safe to share                |
+| Ownertrust              | ✅     | Restores trust level         |
+| Recovery tested         | ☐      | Recommended yearly           |
+
+---
+
+## 📦 Backup Locations (Do not include real paths)
+
+- OneDrive (company-managed, encrypted)
+- Encrypted USB (off-site physical storage)
+- [Optional] Secure vault (e.g., Bitwarden or S3+KMS)
+
+---
+
+## 🛑 DO NOT
+
+- Commit unencrypted private keys to this repository
+- Use personal or non-rotated keys for encryption
+- Forget to update this file after key changes
+
+---
+
+## 📎 Appendix: What is a GPG Fingerprint?
+
+A GPG fingerprint is a unique hash that identifies a specific GPG key. It is derived from the key material itself and is safe to publish.
+
+### Why it's used
+
+- To uniquely identify a key when encrypting
+- To verify a public key's authenticity
+- To track active and rotated keys in documentation and policies
+
+### Why it's safe to include here
+
+- A fingerprint does **not** expose your private key
+- It does **not** reveal your passphrase
+- It cannot be used to decrypt anything
+- It is meant to be **shared publicly**
+
+Publishing fingerprints is standard practice in secure systems and infrastructure environments. It helps ensure others are encrypting to the correct key.
+
+// schemas/config.schema.json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Core Services Config",
+  "type": "object",
+  "required": [
+    "tenant_client_id",
+    "core_api_host",
+    "services_port",
+    "auth_url",
+    "backend_url",
+    "api_url",
+    "token_endpoint"
+  ],
+  "properties": {
+    "tenant_client_id": {
+      "type": "string",
+      "description": "Unique identifier for the client, e.g., CORE.DEV"
+    },
+    "core_api_host": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base host URL for the core API (e.g. http://localhost)"
+    },
+    "services_port": {
+      "type": "number",
+      "description": "Port used to expose backend services (e.g. 3000)"
+    },
+    "backend_port": {
+      "type": "number",
+      "description": "Port used to expose backend services (e.g. 3000)"
+    },
+    "auth_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Authentication route relative to base host (e.g. /auth/login)"
+    },
+    "backend_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Base URL of the backend API exposed to clients (e.g. api.core.com)"
+    },
+    "api_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Full API URL used internally to call backend endpoints (e.g. http://localhost:3000/api)"
+    },
+    "token_endpoint": {
+      "type": "string",
+      "format": "uri",
+      "description": "OAuth2 token endpoint (e.g. https://login.microsoftonline.com)"
+    }
+  },
+  "additionalProperties": false
+}
+
+// schemas/metadata.schema.json
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Client Metadata Schema",
+    "type": "object",
+    "required": ["template_version", "deployed_by", "last_update"],
+    "properties": {
+      "template_version": {
+        "type": "string",
+        "pattern": "^v\\d+\\.\\d+\\.\\d+$",
+        "description": "Version of the template used (e.g. v1.0.0)"
+      },
+      "deployed_by": {
+        "type": "string",
+        "format": "email",
+        "description": "Email of the person who deployed"
+      },
+      "last_update": {
+        "type": "string",
+        "format": "date",
+        "description": "Last update date in YYYY-MM-DD format"
+      },
+      "notes": {
+        "type": "string",
+        "description": "Optional description of the deployment context"
+      }
+    },
+    "additionalProperties": false
+  }
+  
+// schemas/secrets.schema.json
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Core Services Secrets",
+    "type": "object",
+    "required": [
+      "sender_email",
+      "client_id",
+      "client_secret",
+      "tenant_id",
+      "refresh_token",
+      "jwt_secret",
+      "internal_jwt_secret",
+      "auth_username",
+      "auth_password"
+    ],
+    "properties": {
+      "sender_email": {
+        "type": "string",
+        "format": "email",
+        "description": "Sender email address used to send messages (e.g. notifications@client.com)"
+      },
+      "client_id": {
+        "type": "string",
+        "description": "Client ID of the Azure-registered application (OAuth2)"
+      },
+      "client_secret": {
+        "type": "string",
+        "description": "Client Secret of the Azure-registered application (OAuth2)"
+      },
+      "tenant_id": {
+        "type": "string",
+        "description": "Azure Tenant ID where the application is registered"
+      },
+      "refresh_token": {
+        "type": "string",
+        "description": "Valid OAuth2 refresh token (manually obtained)"
+      },
+      "jwt_secret": {
+        "type": "string",
+        "description": "Secret key used to sign and verify public API JWTs"
+      },
+      "internal_jwt_secret": {
+        "type": "string",
+        "description": "Secret key for internal system JWTs (e.g. service-to-service auth)"
+      },
+      "auth_username": {
+        "type": "string",
+        "description": "Internal system username to access the authentication endpoint"
+      },
+      "auth_password": {
+        "type": "string",
+        "description": "Password for the internal system authentication user"
+      },
+      "cert_pdf_sign_password": {
+        "type": "string",
+        "description": "Password for PDF signing certificate"
+      }
+    },
+    "additionalProperties": false
+  }
+  
+// tools/README.md
+# Tools
+
+Utility scripts and keys for managing the GPG-based encryption workflow in `core-envs-private`.
+
+## Included
+
+- `backup-gpg.sh`: Export your GPG private/public keys and trust config
+- `restore-gpg.sh`: Restore them on a new system
+- `public-key.asc`: Safe to share; others can use it to encrypt to you
+
+🚫 **Never store `private-key.asc` here.** Always keep it offline and encrypted.
+
+
+// tools/backup-check.sh
+#!/bin/bash
+# tools/backup-check.sh
+
+set -e
+
+BACKUP_DIR="tools"
+KEY_FILE="$BACKUP_DIR/private-key.asc.gpg"
+TRUST_FILE="$BACKUP_DIR/ownertrust.txt"
+
+echo "🔐 Verifying GPG backup integrity..."
+
+# Check presence
+[ -f "$KEY_FILE" ] || { echo "❌ Missing private-key.asc.gpg"; exit 1; }
+[ -f "$TRUST_FILE" ] || { echo "❌ Missing ownertrust.txt"; exit 1; }
+
+# Test decryption without importing
+gpg --dry-run --decrypt "$KEY_FILE" > /dev/null 2>&1 \
+  && echo "✅ GPG backup decryptable" \
+  || { echo "❌ GPG backup could not be decrypted"; exit 1; }
+
+echo "📦 All backup files are present and usable."
+
+// tools/backup-gpg.sh
+#!/bin/bash
+
+# CONFIG: Replace with your actual full fingerprint if different
+FINGERPRINT="C9B7D0EA72899E6D764D97279EE538D3A441F8D0"
+BACKUP_DIR=~/gpg-backup-core
+
+echo "[*] Starting GPG backup for fingerprint: $FINGERPRINT"
+mkdir -p "$BACKUP_DIR" || exit 1
+
+# Export private key
+gpg --export-secret-keys --armor "$FINGERPRINT" > "$BACKUP_DIR/private-key.asc"
+echo "✅ Private key exported to $BACKUP_DIR/private-key.asc"
+
+# Export public key
+gpg --export --armor "$FINGERPRINT" > "$BACKUP_DIR/public-key.asc"
+echo "✅ Public key exported to $BACKUP_DIR/public-key.asc"
+
+# Export ownertrust
+gpg --export-ownertrust > "$BACKUP_DIR/ownertrust.txt"
+echo "✅ Ownertrust exported to $BACKUP_DIR/ownertrust.txt"
+
+# List result
+echo ""
+echo "[*] Backup completed. Files:"
+ls -lh "$BACKUP_DIR"
+
+echo ""
+echo "🛡️  IMPORTANT: Copy the contents of $BACKUP_DIR to a secure offline backup location."
+
+// tools/gpg_key_policy.md
+# 🔐 GPG Key Policy for core-envs-private
+
+**Owner:** Alejandro Prado  
+**Last updated:** 2025-05-31
+
+This document outlines the policy for managing GPG keys used in the encryption and decryption of secrets in the `core-envs-private` repository, which is used for secure environment configuration across multiple clients.
+
+---
+
+## 🎯 Objectives
+
+- Ensure secrets remain decryptable across time, machines, and team members
+- Minimize risk of key loss or unauthorized decryption
+- Standardize backup, sharing, and rotation processes
+- Enable smooth onboarding/offboarding of team members
+
+---
+
+## 🗝️ Key Generation
+
+- Keys must be **RSA 4096 bits**
+- Keys should be generated using:
+
+  ```bash
+  gpg --full-generate-key
+
+// tools/public-key.asc
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQINBGg6yz8BEADBp6eZ1+wCZeeIjS5bWNIQf2WD9F+8xc1HnQC2dM0zv7WBwJOu
+DMuekB7NDa3Ocr9OoE4mnbbz1AhwwzkO+hmupe/xNnZMlJm6GudyP+ahB3uftN+h
+hA6DWOXoZgtji+nT7hnRcfE6DB65VvV9aCr4pBofhnemaWmDTy9W4KZFiAaHmCMn
+SAjwVaR3XS1R7Plz8Nra/klqFqO9y2cL9ALMIgxJEMLON0Dl7TndGWoNeKZDGAZ0
+mG9yq2rs2lcz+TUaIkyKhA0Z634uUTNSeXFFcxOcRQsVjXIuriqXHfaeBgh1mBQs
+MCq3f3ANJCcEKVxq432oY5khTMVpcwIKs4Wthy9spOUytc/QX9ODslTKAXZksSaS
+jxdEEv4BTEDAoaiwH1HmDCd6lVyUDF0dnZKnbawXMUg7sny1AGVO1VJKzA21j45U
+E+EHY9Mo8APZsckLlcqTzDt1JInoDxP4ISksNXnbgs7oEae/E7vZ2Y+QtGm2lGD8
+2UbYuc/9/me0lw6GPkB+0DENRFsyfIrBla/z4gTVSgZgu7BYE/OeyydO3+IDqbvr
+K3w2QaasfXiDMCnYdYV9Qdu0rXjSZmPKyAxhEUsboQOQCeZPQBRI1eeEbqxX8oEb
+PgiSZoPu5xTVAVM/DMcsJEqIst0lTyQYwnZeQWUL1yL735gxqJYJdTK+KwARAQAB
+tE1pbmZyYS1jb3JlLXNlcnZpY2VzIChpbmZyYS1jb3JlLXNlcnZpY2VzKSA8YWxl
+amFuZHJvLnByYWRvQGNvcmV0ZWNobm9sb2d5LmllPokCVwQTAQgAQRYhBMm30Opy
+iZ5tdk2XJ57lONOkQfjQBQJoOss/AhsDBQkB4TOABQsJCAcCAiICBhUKCQgLAgQW
+AgMBAh4HAheAAAoJEJ7lONOkQfjQ4rkP/jwHGj045fCAwysMOuz6jk2KGzoM3wS9
+pYwSIflKmO5nBSX/29+hiayKisFEYnY6AUyU6qeM5LBRSG13kkdppAGyQebm0a/O
+XhwF8Owy8iUWf0zqDfwmrHKW58Fy3TP+NE8N31kbhsTLcnu2nBzlt8YTO6WSbpWo
+tcY3TvfQjHZ7Ag/HGPgy6AZak2zFk7q7K4kfIksSeRMoJqwO+Wl8Wrg1jaGXGxag
+sGZJ3GzBwYV1q//F6Ct2tmUBJcjBvuzDuToLqnV0EgKOPBb5878XAvpfvqruh3Hz
+4I3DgxGOF/R/N1IgWnK5IJ8NFtkZJlc/YUs2KyAj6OuB41Tv9D9DQxP8lEzYpKad
+A86HOYcTkwZeZHvTVfboYezrD0cqloNfO8itOr0smnPQGUKUu6QWLl1DvBsyfGt0
+IM9HZ0HZZzTnYbrb7mqsp7Rrn8GD2LOgznNVXEB142yhkBNhlQrFbPEP8sVwQg3W
+RIIVzcL8T21Z/uPvTvDyFJKm8rt61GUia1gwEaP/pKHvlEZcR4FXifWVTu2EEHRW
+j07Nt0cihjXlgugDXcTIMPn+eDtQa0ON3tRP999ezwo0/cjawKdVKhlPbtFnyIqd
+/oCtjeA4naJVewDJxz5UncS1BRm+2zU3riMKtKcOaAuf/A/RJIJK6sQcWAh2RA68
+SExyqPbwadCtuQINBGg6yz8BEAC//eRx9L9ZZ9FP6n7owk716OpzorqLriFgT2Da
+HnCtxNIZhtaB/z/ecOJLnHF6GAJlD5TUvQkhd6wawS5wHe0kpbMiF+x2V0zc9RJb
+VqEt2SwkjGULReTcRZONLjnEr4g4xbEemy/rjw0mHpkmpAZjA5DYfQ7IC42ARE/v
+bVU8C3NTOVOaxdzDL7PDR7uEzt7khw+FLdS6h7VrAFTvmbBLrGHErGps0htZc4Bv
+oRi804VjHEPpASLVboJ9k/aX/RkaVNVdJ5cy3kgNN4K+4CBsNhc0Cipcqi3Wi2hE
+Al1s/76AqG0D0hDFy58drXpPGpzqr6ZEPxhL/LE6F2DVDXoFfHrsJFEExvqiA65S
+rDV+Rdq3LZf+Wbnk6YesVYBluCbbk7ucJNZvdqEgbkV5YRhsvgEN9rjEN1ujw7OZ
+xfS8Q5IWTB7K+4SfgpB+7W5gECWksgmXq/yCf1AMrglSrExFzYBLF5pz5T8lhMbw
+G0sW40qFL72LoDuR03rcqVVe6yOg7eJ+fnoVdRnbUr6C0mWWkIGaau5EMIpTruOT
+asXQ0UjCROEM91ZOFfssPWrnWu1tcw/HBgKz984sWpuAjBtN/Hf+zUix7lrSQFQt
+pxAqvBF7o+Xq5DN/UBAH1fCbLsUZFZqj6x9SQn65aGlNPdwernqRWKIcBUgPrcTa
+lYmkqwARAQABiQI8BBgBCAAmFiEEybfQ6nKJnm12TZcnnuU406RB+NAFAmg6yz8C
+GwwFCQHhM4AACgkQnuU406RB+NB3ZBAApO9z8s2G2PYG+Pm2KqUwRNxgpas40Ws7
+1VWTWWJPM15bjPj8Lz1xTgK5IBhgfSPe7Gs0VH5xDZtMy/2tW3Cl7gT1iK7GCmUT
+LRAHZIDs2qI7DJM59iklIEbRLn6rgSHu6LRgyKD3cAJw30w0xykalnl47LVWy6eF
+E7bz3aU11hd9lGmqLE+7dp97Ceb0whXTP7X7WxQtCJbvVynw7SeRQLRrsSy9xE2u
+oSH/ovsfx7UcrX6POMwO87f1LeHMumEljVIizz2kV3KtDdRm49BBvdo76kPYopF6
+h9HACl4yEMvf8O+B4+Wt8/oQAGQq7QSGeJPJmyDAvLRRJjFLBKo/zc2MqbVQumUe
+RE9wjJAeSq/zK0NPIy7upshRF2+T9z2I3T7Kso5rNMESwBuWAayAd385iwDF17wo
+MlNQlD8GLzhEpTvpVXg0fqW3tblJRAn+cRk6+cuFl6lL2kVkqjx8o8rXZsHI4YWK
+uAXI2I0Eu8nMVrD6mUjkWRdyAxOsI+N0ulCQoYd/S3TiCvjD7a7GA8aG7pbQk4jN
+5mAK0AJsyN8+GQj1HLpokjnRo9g/Q1bITMrhIpYyKphZhGR3K2YOUa1d5JVMwiJc
+AOaRB+q3yoHJwVw+RB8ZMNKXFKiQ2/AO4NbU5ik8LzTl3DRewN4hdN+W+fPmdl9B
+Plx/cgiS3jE=
+=ImD+
+-----END PGP PUBLIC KEY BLOCK-----
+
+// tools/restore-gpg.sh
+#!/bin/bash
+
+# CONFIG: Path to your backup folder
+BACKUP_DIR=~/gpg-backup-core
+
+# Check if files exist
+if [[ ! -f "$BACKUP_DIR/private-key.asc" ]] || [[ ! -f "$BACKUP_DIR/ownertrust.txt" ]]; then
+  echo "❌ Backup files not found in $BACKUP_DIR"
+  echo "Make sure private-key.asc and ownertrust.txt exist."
+  exit 1
+fi
+
+echo "[*] Importing private key..."
+gpg --import "$BACKUP_DIR/private-key.asc" && echo "✅ Private key imported."
+
+echo "[*] Importing ownertrust..."
+gpg --import-ownertrust "$BACKUP_DIR/ownertrust.txt" && echo "✅ Ownertrust restored."
+
+echo ""
+echo "🔐 GPG environment restored. You can now decrypt SOPS-encrypted files if the passphrase is known."
+
+// tools/validate-config-safety.sh
+#!/bin/bash
+
+# validate-config-safety.sh
+# Ensures that no config.yaml contains sensitive keys
+
+SENSITIVE_KEYS=("client_secret" "refresh_token" "jwt_secret" "internal_jwt_secret" "password" "token")
+
+echo "🔍 Scanning clients/*/config.yaml for sensitive keys..."
+
+found_issues=0
+
+for file in clients/*/config.yaml; do
+  for key in "${SENSITIVE_KEYS[@]}"; do
+    if grep -qi "$key" "$file"; then
+      echo "❌ Sensitive key '$key' found in $file"
+      found_issues=1
+    fi
+  done
+done
+
+if [ $found_issues -eq 0 ]; then
+  echo "✅ All config.yaml files are clean."
+  exit 0
+else
+  echo "🚨 Please remove sensitive keys from config.yaml."
+  exit 1
+fi
+
+// tools/win64/sops_exe_readme.md
+# SOPS Binary Placeholder (Windows 64-bit)
+
+This folder is intentionally kept in the repository to indicate the required location for the `sops.exe` binary on Windows.
+
+- Download the binary from [SOPS releases](https://github.com/getsops/sops/releases), rename it to `sops.exe`, and place it here.
+- This file prevents Git from ignoring the entire folder.
+- The binary itself is ignored via `.gitignore` to avoid committing sensitive or platform-specific executables.
+
+// validate-repo.sh
+#!/bin/bash
+
+# validate-repo.sh
+# Validates that all SOPS-encrypted YAML files can be decrypted for a given client
+# Usage:
+#   ./validate-repo.sh --client=core-dev
+
+set -e
+
+CLIENT=""
+BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="${BASE_DIR}"
+SOPS_CMD="sops"
+
+# Detect platform
+UNAME_OUT="$(uname -s)"
+case "${UNAME_OUT}" in
+    MINGW*|CYGWIN*|MSYS*)
+        SOPS_CMD="${REPO_ROOT}/tools/win64/sops.exe"
+        ;;
+esac
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    --client=*)
+      CLIENT="${arg#*=}"
+      shift
+      ;;
+    *)
+      echo "❌ Unknown argument: $arg"
+      exit 1
+      ;;
+  esac
+done
+
+# Default to core-dev if not provided
+if [ -z "$CLIENT" ]; then
+  CLIENT="core-dev"
+fi
+
+echo "🔍 Validating secrets for client: $CLIENT"
+
+TARGET_DIR="${REPO_ROOT}/clients/${CLIENT}"
+
+if [ ! -d "$TARGET_DIR" ]; then
+  echo "❌ Directory not found: $TARGET_DIR"
+  exit 1
+fi
+
+FILES=$(find "$TARGET_DIR" -type f -name "*.sops.yaml")
+
+if [ -z "$FILES" ]; then
+  echo "⚠️ No .sops.yaml files found in $TARGET_DIR"
+  exit 0
+fi
+
+for file in $FILES; do
+  echo "🔐 Checking: $file"
+  if "$SOPS_CMD" -d "$file" >/dev/null; then
+    echo "✅ OK"
+  else
+    echo "❌ Failed to decrypt $file"
+    exit 1
+  fi
+done
+
+echo "✅ All secrets for $CLIENT are decryptable."
+
