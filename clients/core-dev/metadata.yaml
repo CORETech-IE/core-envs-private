@@ -1,4 +1,4 @@
-template_version: v1.0.1
+template_version: v1.0.2
 deployed_by: alejandro.prado@coretechnology.ie
-last_update: "2025-06-02"
-notes: Added PDF digital signature using .p12 cert and ABAC validation via /send-with-consent
+last_update: "2025-06-12"
+notes: New Key

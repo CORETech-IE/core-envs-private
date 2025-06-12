@@ -1,4 +1,4 @@
 creation_rules:
-  - path_regex: .*\.sops\.yaml$
+  - path_regex: .*secrets\.sops\.yaml$
     encrypted_regex: '^(.*)$'
-    pgp: 'E0E53EE33278112154BB63B2B02223CF086064AE'
+    pgp: '84F09B1D810A6590'
