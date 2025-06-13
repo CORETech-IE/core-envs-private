@@ -1,11 +1,15 @@
-# Client configuration template (non-sensitive data only)
+tenant_client_id: CORE.DEV
+core_api_host: http://localhost
+services_port: 3001
+backend_port: 3000
+auth_url: /auth/login
+backend_url: api.core.com
+api_url: http://localhost:3000/api
+token_endpoint: https://login.microsoftonline.com
+cert_pdf_sign_path: c:\CORE\certs\certificate.p12
+cert_pdf_sign_type: p12
 
-tenant_client_id: KIERNAN                            # Unique identifier for the client (used for tenant separation)
-core_api_host: http://localhost                      # Hostname or IP where core-services backend is running
-services_port: 3001                                  # Port number where backend services are exposed
-auth_url: /auth/login                                # Relative URL for authentication endpoint
-backend_url: api.core.com                            # Base URL for the backend API (used for client communication)
-api_url: http://localhost:3001/api                   # Full URL for core-services API access
-token_endpoint: https://login.microsoftonline.com    # Azure OAuth2 token endpoint
-cert_pdf_sign_path: /certs/pdf-sign.pfx              # Path to the PDF signing certificate (PFX file) 
-cert_pdf_sign_type: p12                              # Type of the certificate file (e.g., p12, pfx) 
+# Browser Pool Configuration
+max_browsers: 2
+max_pages_per_browser: 3
+page_idle_timeout: 300000  # 5 minutes in milliseconds

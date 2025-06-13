@@ -8,3 +8,8 @@ api_url: http://localhost:3000/api
 token_endpoint: https://login.microsoftonline.com
 cert_pdf_sign_path: c:\CORE\certs\certificate.p12
 cert_pdf_sign_type: p12
+
+# Browser Pool Configuration
+maxBrowsers: 1
+maxPagesPerBrowser: 2
+pageIdleTimeout: 60000  # 1 minute in milliseconds

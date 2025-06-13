@@ -5,3 +5,9 @@ auth_url: /auth/login
 backend_url: api.core.com
 api_url: http://localhost:3000/api
 token_endpoint: https://login.microsoftonline.com
+
+
+# Browser Pool Configuration
+max_browsers: 2
+max_pages_per_browser: 3
+page_idle_timeout: 300000  # 5 minutes in milliseconds
