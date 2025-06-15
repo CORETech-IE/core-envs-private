@@ -17,7 +17,7 @@ pageIdleTimeout: 60000  # 1 minute in milliseconds
 # Backend database configuration
 pg_host: "localhost"  # o la IP/hostname de tu servidor PostgreSQL
 pg_port: 5432
-pg_database: "core_backend_db"
+pg_database: "core_dev"
 
 # SSL configuration (si lo necesitas)
 pg_ssl: true
