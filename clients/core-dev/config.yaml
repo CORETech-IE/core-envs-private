@@ -71,7 +71,7 @@ servers:
   - name: cul-cor-dock01
     hostname: cul-cor-dock01
     monitoring:
-      heartbeat: false
+      heartbeat: true
       heartbeat_interval_seconds: 30
       metrics: false
       metrics_interval_seconds: 300 
