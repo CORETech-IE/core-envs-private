@@ -1,8 +1,9 @@
 # Company Core Development Environment Configuration
 tenant:
-  client_id: CORE.DEV
+  client_id: core-dev
   name: "Core Development Environment"
   environment: development
+  config_reload_interval_minutes: .1
 
 # Services set for the Core Development Environment
 services:
@@ -67,12 +68,27 @@ servers:
       - windows
       - development
       
-  - name: cul-core-dock01
-    hostname: cul-core-dock01
+  - name: cul-cor-dock01
+    hostname: cul-cor-dock01
     monitoring:
-      heartbeat: true
+      heartbeat: false
+      heartbeat_interval_seconds: 30
       metrics: false
+      metrics_interval_seconds: 300 
       logs: false
     tags:
       - linux
       - development
+
+  - name: localhost-dev
+    hostname: cul-mit-dvdi13
+    monitoring:
+      heartbeat: true
+      heartbeat_interval_seconds: 30
+      metrics: false
+      logs: false
+    tags:
+      - development
+      - local
+      - testing
+      - windows
