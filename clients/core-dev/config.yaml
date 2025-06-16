@@ -27,7 +27,7 @@ services:
 
   - name: core-backend
     enabled: true
-    host: http://localhost
+    host: localhost
     port: 3000
     endpoints:
       auth: /auth/login
