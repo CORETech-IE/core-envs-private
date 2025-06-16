@@ -20,6 +20,11 @@ services:
       pdf_generation:
         max_pages_per_browser: 2
         page_idle_timeout: 60000
+    monitoring:
+      heartbeat:
+        enabled: true
+        target_service: core-backend  # A qué servicio enviar heartbeats
+        auth_service: core-backend    # Dónde autenticarse
     certificates:
       pdf_signing:
         path: c:\CORE\certs\certificate.p12
