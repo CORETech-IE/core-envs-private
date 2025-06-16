@@ -1,11 +1,77 @@
-# Client configuration template (non-sensitive data only)
+# Company/Client Environment Configuration Template
+tenant:
+  client_id: CLIENT_ID                    # Unique identifier (e.g., CORE.DEV, KIERNAN, etc.)
+  name: "Client Full Name"                # Human-readable name
+  environment: environment_type           # development | staging | production
 
-tenant_client_id: CORE.DEV                           # Unique identifier for the client (used for tenant separation)
-core_api_host: http://localhost                      # Hostname or IP where core-services backend is running
-services_port: 3000                                  # Port number where backend services are exposed
-auth_url: /auth/login                                # Relative URL for authentication endpoint
-backend_url: api.core.com                            # Base URL for the backend API (used for client communication)
-api_url: http://localhost:3000/api                   # Full URL for core-services API access
-token_endpoint: https://login.microsoftonline.com    # Azure OAuth2 token endpoint
-cert_pdf_sign_path: /certs/pdf-sign.pfx              # Path to the PDF signing certificate (PFX file) 
-cert_pdf_sign_type: p12                              # Type of the certificate file (e.g., p12, pfx) 
+# Services configuration for this client
+services:
+  - name: core-services
+    enabled: true
+    host: http://localhost                # Service host URL
+    port: 3001                           # Service port
+    endpoints:
+      auth: /auth/login
+      api: /api
+      health_check: /health
+    browser_pool:
+      max_browsers: 1                    # Max concurrent browser instances
+      pdf_generation:
+        max_pages_per_browser: 2
+        page_idle_timeout: 60000         # Timeout in milliseconds
+    certificates:
+      pdf_signing:
+        path: /path/to/certificate.p12   # Path to PDF signing certificate
+        type: p12                        # Certificate type (p12, pfx)
+
+  - name: core-backend
+    enabled: true
+    host: http://localhost
+    port: 3000
+    endpoints:
+      auth: /auth/login
+      api: /api
+      health_check: /health
+    database:
+      host: localhost                    # PostgreSQL host
+      port: 5432                        # PostgreSQL port
+      name: database_name               # Database name
+      ssl:
+        enabled: true
+        reject_unauthorized: true
+      pool:
+        min: 2                          # Min pool connections
+        max: 20                         # Max pool connections
+        idle_timeout: 30000             # Idle timeout in ms
+        connection_timeout: 5000        # Connection timeout in ms
+    monitoring:
+      health_check_interval: 60000      # Health check frequency in ms
+      log_level: info                   # debug | info | warn | error
+
+# External services integration
+external_services:
+  - name: ms365
+    type: oauth2
+    endpoints:
+      token: https://login.microsoftonline.com
+      
+  # Add more external services as needed
+  # - name: service_name
+  #   type: rest | oauth2 | soap
+  #   endpoints:
+  #     endpoint_name: https://api.example.com
+
+# Servers reporting to this environment
+servers:
+  - name: server-name-1
+    hostname: server.domain.local       # FQDN or hostname
+    monitoring:
+      heartbeat: false                  # Enable heartbeat monitoring
+      metrics: false                    # Enable metrics collection
+      logs: false                       # Enable log forwarding
+    tags:
+      - tag1                           # Tags for categorization
+      - tag2
+      
+  # Add more servers as needed
+  # Copy the structure above for each server

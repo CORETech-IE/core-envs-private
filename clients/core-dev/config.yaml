@@ -1,41 +1,78 @@
-tenant_client_id: CORE.DEV
-core_api_host: http://localhost
-services_port: 3001
-auth_url: /auth/login
-backend_url: api.core.com
-api_url: http://localhost:3000/api
-token_endpoint: https://login.microsoftonline.com
-cert_pdf_sign_path: c:\CORE\certs\certificate.p12
-cert_pdf_sign_type: p12
+# Company Core Development Environment Configuration
+tenant:
+  client_id: CORE.DEV
+  name: "Core Development Environment"
+  environment: development
 
-# Browser Pool Configuration
-maxBrowsers: 1
-maxPagesPerBrowser: 2
-pageIdleTimeout: 60000  # 1 minute in milliseconds
+# Services set for the Core Development Environment
+services:
+  - name: core-services
+    enabled: true
+    host: http://localhost
+    port: 3001
+    endpoints:
+      auth: /auth/login
+      api: /api
+      health_check: /health
+    browser_pool:
+      max_browsers: 1
+      pdf_generation:
+        max_pages_per_browser: 2
+        page_idle_timeout: 60000
+    certificates:
+      pdf_signing:
+        path: c:\CORE\certs\certificate.p12
+        type: p12
 
-#################################################################
-# Backend database configuration
-pg_host: "localhost"  # o la IP/hostname de tu servidor PostgreSQL
-pg_port: 5432
-pg_database: "core_dev"
+  - name: core-backend
+    enabled: true
+    host: http://localhost
+    port: 3000
+    endpoints:
+      auth: /auth/login
+      api: /api
+      health_check: /health
+    database:
+      host: localhost
+      port: 5432
+      name: core_dev
+      ssl:
+        enabled: true
+        reject_unauthorized: true
+      pool:
+        min: 2
+        max: 20
+        idle_timeout: 30000
+        connection_timeout: 5000
+    monitoring:
+      health_check_interval: 60000
+      log_level: info
 
-# SSL configuration (si lo necesitas)
-pg_ssl: true
-pg_ssl_reject_unauthorized: true
+# External services used by the Core Development Environment
+external_services:
+  - name: ms365
+    type: oauth2
+    endpoints:
+      token: https://login.microsoftonline.com
 
-# Connection pool settings
-pg_min_connections: 2
-pg_max_connections: 20
-pg_idle_timeout_millis: 30000
-pg_connection_timeout_millis: 5000
-
-# Backend service configuration
-backend_host: "0.0.0.0"
-backend_port: 3000
-service_name: "core-backend"
-node_env: "development"
-log_level: "info"
-
-# Retention settings
-health_check_interval: 60000
-#################################################################
+# Servers configuration for the Core Development Environment
+servers:
+  - name: cul-core-nodejs
+    hostname: cul-core-nodejs
+    monitoring:
+      heartbeat: false
+      metrics: false
+      logs: false
+    tags:
+      - windows
+      - development
+      
+  - name: cul-core-dock01
+    hostname: cul-core-dock01
+    monitoring:
+      heartbeat: true
+      metrics: false
+      logs: false
+    tags:
+      - linux
+      - development
